@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat con Socket.IO</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .chat-container {
+        width: 90%;
+        max-width: 800px;
+        height: 90vh;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 1.5em;
+        font-weight: bold;
+      }
+
+      .connection-status {
+        padding: 10px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 0.9em;
+        color: #6c757d;
+      }
+
+      .connection-status.connected {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .connection-status.disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8f9fa;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        padding: 12px 16px;
+        border-radius: 18px;
+        max-width: 70%;
+        word-wrap: break-word;
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .message.own {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-left: auto;
+        text-align: right;
+      }
+
+      .message.other {
+        background: white;
+        color: #333;
+        border: 1px solid #e9ecef;
+      }
+
+      .message.system {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+        text-align: center;
+        margin: 10px auto;
+        font-style: italic;
+        max-width: 50%;
+      }
+
+      .message-info {
+        font-size: 0.8em;
+        opacity: 0.8;
+        margin-top: 5px;
+      }
+
+      .input-container {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        gap: 10px;
+      }
+
+      #messageInput {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 1em;
+        outline: none;
+        transition: border-color 0.3s ease;
+      }
+
+      #messageInput:focus {
+        border-color: #667eea;
+      }
+
+      #sendButton {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      #sendButton:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      #sendButton:active {
+        transform: translateY(0);
+      }
+
+      #sendButton:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .messages::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+
+      .messages::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+      }
+
+      .messages::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+
+      @media (max-width: 768px) {
+        .chat-container {
+          width: 95%;
+          height: 95vh;
+        }
+
+        .message {
+          max-width: 85%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">💬 Chat en Tiempo Real</div>
+      <div id="connectionStatus" class="connection-status">Conectando...</div>
+      <div id="messages" class="messages">
+        <div class="message system">
+          ¡Bienvenido al chat! Conectando al servidor...
+        </div>
+      </div>
+      <div class="input-container">
+        <input
+          type="text"
+          id="messageInput"
+          placeholder="Escribe tu mensaje aquí..."
+          disabled
+        />
+        <button id="sendButton" disabled>Enviar</button>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      const messages = document.getElementById("messages");
+      const messageInput = document.getElementById("messageInput");
+      const sendButton = document.getElementById("sendButton");
+      const connectionStatus = document.getElementById("connectionStatus");
+
+      let isConnected = false;
+
+      // Función para agregar mensajes al chat
+      function addMessage(content, type = "other", info = "") {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${type}`;
+
+        if (type === "system") {
+          messageDiv.innerHTML = content;
+        } else {
+          messageDiv.innerHTML = `
+                    <div>${content}</div>
+                    ${info ? `<div class="message-info">${info}</div>` : ""}
+                `;
+        }
+
+        messages.appendChild(messageDiv);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      // Función para enviar mensaje
+      function sendMessage() {
+        const message = messageInput.value.trim();
+        if (message && isConnected) {
+          // Mostrar el mensaje propio inmediatamente
+          addMessage(message, "own", new Date().toLocaleTimeString());
+
+          // Enviar al servidor
+          socket.emit("chat message", message);
+          messageInput.value = "";
+        }
+      }
+
+      // Event listeners
+      sendButton.addEventListener("click", sendMessage);
+
+      messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          sendMessage();
+        }
+      });
+
+      // Socket.IO event listeners
+      socket.on("connect", () => {
+        isConnected = true;
+        connectionStatus.textContent = "🟢 Conectado al servidor";
+        connectionStatus.className = "connection-status connected";
+        messageInput.disabled = false;
+        sendButton.disabled = false;
+        messageInput.focus();
+        addMessage("¡Te has conectado al chat exitosamente!", "system");
+      });
+
+      socket.on("disconnect", () => {
+        isConnected = false;
+        connectionStatus.textContent = "🔴 Desconectado del servidor";
+        connectionStatus.className = "connection-status disconnected";
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+        addMessage("Se ha perdido la conexión con el servidor", "system");
+      });
+
+      socket.on("chat message", (data) => {
+        // Solo mostrar mensajes de otros usuarios (evitar duplicados)
+        if (data.id !== socket.id) {
+          addMessage(
+            data.message,
+            "other",
+            `Usuario ${data.id.substring(0, 6)} - ${data.timestamp}`
+          );
+        }
+      });
+
+      socket.on("user connected", (data) => {
+        addMessage(`Un nuevo usuario se ha unido al chat`, "system");
+      });
+
+      socket.on("connect_error", (error) => {
+        connectionStatus.textContent = "❌ Error de conexión";
+        connectionStatus.className = "connection-status disconnected";
+        addMessage("Error al conectar con el servidor", "system");
+      });
+    </script>
+  </body>
+</html>
