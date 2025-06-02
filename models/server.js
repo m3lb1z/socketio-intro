@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const path = require("path");
+const cors = require("cors");
 
 const Sockets = require("./sockets");
 
@@ -14,6 +15,12 @@ class Server {
   }
 
   middlewares() {
+    // Configurar CORS para permitir cualquier dominio
+    this.app.use(
+      cors({
+        origin: "*",
+      })
+    );
     // Servir archivos estáticos desde el directorio actual
     this.app.use(express.static(path.resolve(__dirname, "../public")));
   }
