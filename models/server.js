@@ -11,7 +11,12 @@ class Server {
     this.app = express();
     this.port = process.env.PORT || 3000;
     this.server = http.createServer(this.app);
-    this.io = socketIo(this.server);
+    this.io = socketIo(this.server, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+      },
+    });
   }
 
   middlewares() {
