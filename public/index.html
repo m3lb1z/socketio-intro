@@ -215,7 +215,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+      const socket = io("https://socketio-intro.onrender.com");
       const messages = document.getElementById("messages");
       const messageInput = document.getElementById("messageInput");
       const sendButton = document.getElementById("sendButton");
