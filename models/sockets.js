@@ -1,6 +1,9 @@
+const BandList = require("./band-list");
+
 class Sockets {
   constructor(io) {
     this.io = io;
+    this.bandList = new BandList();
     this.socketEvents();
   }
 
@@ -8,6 +11,8 @@ class Sockets {
     // Manejar conexiones de Socket.IO
     this.io.on("connection", (socket) => {
       console.log("Un usuario se conectó:", socket.id);
+
+      socket.emit("current-bands", this.bandList.getBands());
 
       // Manejar mensajes del chat
       socket.on("chat message", (msg) => {
