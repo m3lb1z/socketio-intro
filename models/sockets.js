@@ -14,6 +14,27 @@ class Sockets {
 
       socket.emit("current-bands", this.bandList.getBands());
 
+      socket.on("vote-band", (bandId) => {
+        this.bandList.increaseVotes(bandId);
+        this.io.emit("current-bands", this.bandList.getBands());
+      });
+
+      socket.on("delete-band", (bandId) => {
+        this.bandList.removeBand(bandId);
+        this.io.emit("current-bands", this.bandList.getBands());
+      });
+
+      socket.on("change-name", ({ bandId, newName }) => {
+        this.bandList.changeName(bandId, newName);
+        console.log(`Nombre de banda cambiado: ${bandId} a ${newName}`);
+        this.io.emit("current-bands", this.bandList.getBands());
+      });
+
+      socket.on("add-band", (name) => {
+        this.bandList.addBand(name);
+        this.io.emit("current-bands", this.bandList.getBands());
+      });
+
       // Manejar mensajes del chat
       socket.on("chat message", (msg) => {
         console.log("Mensaje recibido:", msg);

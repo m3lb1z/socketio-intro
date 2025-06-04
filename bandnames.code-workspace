@@ -1,0 +1,11 @@
+{
+  "folders": [
+    {
+      "path": "../bandnames-server"
+    },
+    {
+      "path": "../bandnames-preact"
+    }
+  ],
+  "settings": {}
+}
